@@ -5,9 +5,10 @@
 A web security alert was triggered due to outbound traffic to a domain categorized as suspicious. The domain was geolocated to a foreign region and raised potential malware or C2 concerns.
 
 ## Detection Source
-- Secure Web Gateway: Zscaler
-- Alert Type: Suspicious web destination
-- Policy Action: Logged and monitored
+- Tool: Zscaler Secure Web Gateway (SWG)
+- Policy Action: Alert / Logged
+- Category: Suspicious Destination
+
 
 ## Initial Triage
 - Destination domain flagged: autofanatik[.]ru (sanitized)
