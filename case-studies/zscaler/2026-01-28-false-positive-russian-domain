@@ -1,4 +1,5 @@
-# Zscaler False Positive Investigation – Suspicious Russian Domain
+# Zscaler False Positive Investigation – Third-Party Redirect to Foreign Domain
+
 
 ## Scenario Overview
 A web security alert was triggered due to outbound traffic to a domain categorized as suspicious. The domain was geolocated to a foreign region and raised potential malware or C2 concerns.
