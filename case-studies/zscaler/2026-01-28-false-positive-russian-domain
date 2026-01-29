@@ -1,0 +1,50 @@
+# Zscaler False Positive Investigation – Suspicious Russian Domain
+
+## Scenario Overview
+A web security alert was triggered due to outbound traffic to a domain categorized as suspicious. The domain was geolocated to a foreign region and raised potential malware or C2 concerns.
+
+## Detection Source
+- Secure Web Gateway: Zscaler
+- Alert Type: Suspicious web destination
+- Policy Action: Logged and monitored
+
+## Initial Triage
+- Destination domain flagged: autofanatik[.]ru (sanitized)
+- Geo-location indicated foreign hosting infrastructure.
+- Alert volume was elevated for a single endpoint.
+
+## Investigation Steps
+
+### 1. Threat Intelligence Validation
+- Checked domain reputation in VirusTotal and public threat intelligence feeds.
+- No confirmed malicious indicators were found.
+
+### 2. Traffic Pattern Analysis
+- Traffic was identified as browser-generated background requests.
+- No repetitive beaconing or malware-like periodicity detected.
+
+### 3. Endpoint Health Validation
+- Verified endpoint EDR status and antivirus health.
+- No suspicious processes or persistence mechanisms detected.
+
+### 4. User Validation
+- The user confirmed accessing supplier-provided automotive merchandise content.
+- A third-party security verification mechanism redirected the session to a foreign domain.
+- The event was classified as a third-party redirect and not as direct user-initiated navigation.
+
+## Findings
+The event was classified as a **false positive** caused by automated browser background traffic. No security compromise was detected.
+
+## Lessons Learned
+- Foreign domains do not always indicate malicious activity.
+- Threat intelligence correlation is required before escalation.
+- Browser background processes can trigger proxy alerts.
+
+## MITRE ATT&CK Mapping
+- T1071: Application Layer Protocol
+- T1046: Network Service Scanning (not confirmed)
+
+## Recommendations
+- Improve proxy alert correlation logic.
+- Implement automated false positive tagging.
+- Educate users about background browser network behavior.
