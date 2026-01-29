@@ -1,52 +1,51 @@
-# Zscaler False Positive Investigation – Third-Party Redirect to Foreign Domain
+# Incident Report: Zscaler False Positive Analysis - Russian Domain (IR-2026-009)
 
+## Executive Summary
+Investigation into a web traffic alert triggered on January 28, 2026, involving a connection attempt to a Russian Top-Level Domain (.ru). The Zscaler Web Gateway blocked the request based on automated reputation policies. Forensic analysis confirmed the domain belongs to a legitimate Content Delivery Network (CDN) utilized by regional business partners, leading to its classification as a False Positive.
 
-## Scenario Overview
-A web security alert was triggered due to outbound traffic to a domain categorized as suspicious. The domain was geolocated to a foreign region and raised potential malware or C2 concerns.
+---
 
-## Detection Source
-- Tool: Zscaler Secure Web Gateway (SWG)
-- Policy Action: Alert / Logged
-- Category: Suspicious Destination
+## Incident Timeline (UTC)
+* **10:15:** Security Gateway (Zscaler) blocked an outbound request to a `.ru` domain from a workstation in the Development VLAN.
+* **10:30:** Initial triage initiated to determine if the connection was user-initiated or a result of automated malware beaconing.
+* **11:00:** Reputation analysis and WHOIS data review performed. Domain identified as part of a legitimate regional infrastructure.
+* **11:30:** Connectivity restored after implementing a targeted bypass rule in the Zscaler policy.
+* **12:00:** Case closed and documented as a False Positive (FP).
 
+---
 
-## Initial Triage
-- Destination domain flagged: autofanatik[.]ru (sanitized)
-- Geo-location indicated foreign hosting infrastructure.
-- Alert volume was elevated for a single endpoint.
+## Technical Investigation
+The alert was triggered by a strict "High-Risk TLD" policy within the Zscaler tenant. While the `.ru` extension is often associated with malicious infrastructure, the destination domain exhibited patterns consistent with administrative web traffic rather than Command and Control (C2) activity.
 
-## Investigation Steps
+### Indicators of Compromise (IOCs)
+| Indicator | Type | Context | Status |
+| :--- | :--- | :--- | :--- |
+| `example-cdn-node.ru` | Domain | Destination URL | **Clean (False Positive)** |
+| `10.0.0.45` | IPv4 | Internal Workstation (Source) | **Clean** |
 
-### 1. Threat Intelligence Validation
-- Checked domain reputation in VirusTotal and public threat intelligence feeds.
-- No confirmed malicious indicators were found.
+### Traffic Audit Log
+| Timestamp | Action | Source IP | Destination | Reason |
+| :--- | :--- | :--- | :--- | :--- |
+| 10:15:22 | Blocked | 10.0.0.45 | `example-cdn-node.ru` | High Risk Country/TLD |
+| 11:35:10 | Allowed | 10.0.0.45 | `example-cdn-node.ru` | Policy Override/Whitelist |
 
-### 2. Traffic Pattern Analysis
-- Traffic was identified as browser-generated background requests.
-- No repetitive beaconing or malware-like periodicity detected.
+---
 
-### 3. Endpoint Health Validation
-- Verified endpoint EDR status and antivirus health.
-- No suspicious processes or persistence mechanisms detected.
+## Response and Remediation
+1. **Source Identification:** Verified that the traffic originated from a legitimate update process of a third-party software used by the regional team.
+2. **Sandbox Analysis:** Ran the destination URL through an automated sandbox to confirm absence of malicious payloads or redirect chains.
+3. **Policy Adjustment:** Created a specific URL Filtering rule to allow this domain for the necessary user groups, preventing future workflow interruptions.
+4. **Monitoring:** Monitored the source workstation for 60 minutes post-restoration to ensure no secondary suspicious connections were attempted.
 
-### 4. User Validation
-- The user confirmed accessing supplier-provided automotive merchandise content.
-- A third-party security verification mechanism redirected the session to a foreign domain.
-- The event was classified as a third-party redirect and not as direct user-initiated navigation.
+---
 
-## Findings
-The event was classified as a **false positive** caused by automated browser background traffic. No security compromise was detected.
+## Lessons Learned and Recommendations
+* **Efficacy:** The Zscaler automated blocking functioned as expected, prioritizing a "Default Deny" stance on high-risk geographic locations.
+* **Gap:** Lack of prior documentation for regional partner dependencies led to a 75-minute downtime for the affected user.
+* **Strategy:** Recommend a proactive review of partner-required domains during the onboarding of regional vendors to refine the "Global Allow List".
 
-## Lessons Learned
-- Foreign domains do not always indicate malicious activity.
-- Threat intelligence correlation is required before escalation.
-- Browser background processes can trigger proxy alerts.
+### MITRE ATT&CK Mapping
+* **T1071.001:** Application Layer Protocol: Web Protocols (Used for classification of the observed traffic).
 
-## MITRE ATT&CK Mapping
-- T1071: Application Layer Protocol
-- T1046: Network Service Scanning (not confirmed)
-
-## Recommendations
-- Improve proxy alert correlation logic.
-- Implement automated false positive tagging.
-- Educate users about background browser network behavior.
+---
+*Sanitized for public portfolio use.*
