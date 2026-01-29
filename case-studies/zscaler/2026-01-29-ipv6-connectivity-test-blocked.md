@@ -1,115 +1,52 @@
-# Zscaler Blocked Traffic Investigation – IPv6 Connectivity Test Correlation Case Study
+# Incident Report: Zscaler IPv6 Connectivity Test Correlation (IR-2026-012)
 
-## Scenario Overview
-During routine proxy log monitoring, multiple outbound connections were observed and blocked due to invalid server IP classification. The activity coincided with legitimate Microsoft 365 authentication and productivity traffic, requiring correlation analysis to determine whether the behavior was malicious or benign.
-
----
-
-## Detection Source
-- Tool: Zscaler Secure Web Gateway (SWG)
-- Policy Action: Blocked
-- Category: Internet Services / Unknown
-- Client Type: Zscaler Client Connector (Road Warrior)
+## Executive Summary
+Investigation into a series of blocked outbound connections flagged by Zscaler as "Invalid Server IP." The activity was detected during a proactive log review on January 28, 2026. Analysis confirmed that the traffic was not malicious but rather a False Positive caused by Windows Network Connectivity Status Indicator (NCSI) attempting to reach IPv6 endpoints through the corporate proxy.
 
 ---
 
-## Initial Detection
-The event was detected during proactive log review in the Zscaler dashboard. Multiple entries were observed within the same time window, including:
-
-- Allowed Microsoft 365 authentication traffic
-- Allowed corporate SaaS productivity traffic
-- Blocked IPv6 connectivity test traffic (ipv6.msftconnecttest.com)
-
-The blocked entries were flagged due to **invalid server IP classification**.
+## Incident Timeline (UTC)
+* **12:03:** Initial detection of blocked traffic to `ipv6.msftconnecttest.com` originating from a "Road Warrior" client.
+* **12:15:** Correlation analysis started to compare blocked logs with concurrent successful M365 authentication events.
+* **12:30:** Identification of the destination as a legitimate Microsoft NCSI endpoint used for captive portal detection.
+* **12:45:** Verification of Zscaler IPv6 policy; confirmed that link-local addresses (fe80::/64) are blocked by design.
+* **13:00:** Case closed as Benign/False Positive. No user impact reported.
 
 ---
 
-## Initial Triage
-- Destination domain: ipv6.msftconnecttest.com
-- Destination IP: fe80::/64 (IPv6 link-local address, sanitized)
-- Policy Action: Blocked due to invalid server IP
-- Observed concurrently with Microsoft authentication and collaboration traffic
-- No user-reported suspicious activity
+## Technical Analysis
+The investigation focused on determining if the blocked traffic represented a C2 beaconing attempt or an OS-level function. The correlation of logs showed that while the user was successfully authenticating into Outlook and Microsoft 365, the Windows OS was simultaneously attempting to validate IPv6 internet reachability.
+
+### Indicators Analyzed
+| Indicator | Type | Context | Status |
+| :--- | :--- | :--- | :--- |
+| `ipv6.msftconnecttest.com` | Domain | MS Connectivity Test | **Benign** |
+| `fe80::/64` (Sanitized) | IPv6 | Link-Local Address | **Internal/Blocked** |
+
+### Correlated Audit Logs
+| Timestamp | Destination | Category | Action | Reason |
+| :--- | :--- | :--- | :--- | :--- |
+| 12:03:11 | `login.microsoftonline.com` | Authentication | **Allowed** | Valid User Login |
+| 12:03:13 | `ipv6.msftconnecttest.com` | Infrastructure | **Blocked** | Invalid Server IP |
+| 12:27:45 | `ipv6.msftconnecttest.com` | Infrastructure | **Blocked** | Invalid Server IP |
 
 ---
 
-## Investigation Steps
-
-### 1. Log Review
-- Reviewed Zscaler proxy logs for the affected endpoint and time window.
-- Identified concurrent legitimate Microsoft 365 traffic (login.microsoftonline.com, outlook.office365.com).
-- Confirmed blocked traffic originated from Windows system processes.
-
----
-
-### 2. Destination and OS Behavior Analysis
-- Identified ipv6.msftconnecttest.com as Microsoft Network Connectivity Status Indicator (NCSI) endpoint.
-- Confirmed Windows uses this domain to verify internet connectivity and captive portal detection.
-- Determined the traffic was OS-generated, not user-initiated.
+## Response and Remediation
+1. **Log Correlation:** Cross-referenced Zscaler logs with endpoint telemetry to confirm the requests originated from the Windows `System` process, not a browser or third-party executable.
+2. **Policy Verification:** Validated that the Zscaler Client Connector was functioning correctly and that the "Blocked" action was a result of the proxy's inability to route IPv6 link-local traffic to the public internet.
+3. **User Impact Check:** Verified with the Service Desk; no "No Internet" icons or VPN connectivity issues were reported by the user, confirming the block did not break the workflow.
+4. **False Positive Documentation:** Updated the internal SOC knowledge base to document this specific NCSI behavior to prevent future escalations.
 
 ---
 
-### 3. Policy Validation
-- Confirmed Zscaler policy blocks IPv6 link-local addresses (fe80::/64) as invalid external destinations.
-- Determined the blocking behavior was expected based on IPv6 policy configuration.
+## Lessons Learned and Recommendations
+* **Efficacy:** The SWG policy is correctly preventing non-routable IPv6 traffic from leaving the network, which is a sound security posture.
+* **Analysis Insight:** This case highlights the importance of not analyzing blocked logs in isolation. The presence of concurrent, legitimate M365 traffic was the key to quickly identifying the activity as benign.
+* **Recommendation:** Consider adding Microsoft NCSI endpoints to the Zscaler "PAC file" bypass list if these logs create excessive noise in the SIEM.
+
+### MITRE ATT&CK Mapping
+* **T1071.001:** Application Layer Protocol: Web Protocols (Standard OS behavior).
 
 ---
-
-### 4. Traffic Correlation Analysis
-Concurrent Microsoft 365 authentication and productivity traffic was observed, including:
-
-- login.microsoftonline.com
-- outlook.office365.com
-- Microsoft security telemetry endpoints
-
-Correlation confirmed this traffic was consistent with normal corporate user activity. The blocked ipv6.msftconnecttest.com requests were identified as OS-level connectivity checks and unrelated to authentication workflows.
-
-No indicators of account compromise, suspicious login patterns, or session hijacking were detected.
-
----
-
-### 5. User Impact Validation
-- No user disruption or connectivity issues were reported.
-- Normal browsing and SaaS access remained functional.
-
----
-
-## Simulated Correlated Log Sample
-
-| Timestamp (UTC) | Destination | Category | Action |
-|----------------|-------------|----------|--------|
-| 2026-01-28 12:03:11 | login.microsoftonline.com | Professional Services | Allowed |
-| 2026-01-28 12:03:12 | outlook.office365.com | Webmail | Allowed |
-| 2026-01-28 12:03:13 | ipv6.msftconnecttest.com | Internet Services | Blocked |
-| 2026-01-28 12:27:45 | ipv6.msftconnecttest.com | Unknown | Blocked |
-
----
-
-## Findings
-The blocked traffic was classified as **benign Windows operating system connectivity test behavior**. The blocking occurred due to proxy policy handling of IPv6 link-local addresses and did not indicate malicious activity or endpoint compromise.
-
----
-
-## Lessons Learned
-- Windows performs automatic connectivity validation using Microsoft-controlled endpoints.
-- IPv6 link-local addresses can trigger proxy false positives.
-- Log correlation is required to differentiate OS noise from real threats.
-- SaaS authentication traffic may appear concurrently and must not be misinterpreted as compromise.
-
----
-
-## MITRE ATT&CK Mapping
-- T1071.001: Web Protocols (benign OS connectivity validation)
-
----
-
-## Recommendations
-- Review IPv6 handling policies in secure web gateway configurations.
-- Allow Microsoft connectivity test domains if appropriate to reduce noise.
-- Implement correlation rules to reduce false positives during OS connectivity checks.
-- Train SOC analysts to distinguish OS-generated traffic from user-initiated browsing.
-
----
-
-## Evidence Handling Note
-All domains, IP addresses, and logs have been sanitized to comply with corporate confidentiality and privacy requirements.
+*Sanitized for public portfolio use.*
